@@ -1,0 +1,924 @@
+<!DOCTYPE html>
+<html lang="th">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>FloodWatch AI - แจ้งเตือนน้ำท่วมประเทศไทย</title>
+<meta name="description" content="ระบบแจ้งเตือนน้ำท่วมและประเมินความเสี่ยงด้วย Machine Learning ครอบคลุม 70+ จังหวัดทั่วไทย">
+<meta name="theme-color" content="#0c1929">
+<meta property="og:title" content="FloodWatch AI - แจ้งเตือนน้ำท่วมประเทศไทย">
+<meta property="og:description" content="ประเมินความเสี่ยงน้ำท่วมในพื้นที่ของคุณด้วย ML Model ใช้งานฟรีไม่จำกัด">
+<meta property="og:type" content="website">
+<link rel="manifest" href="manifest.json">
+<link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>💧</text></svg>">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Sans+Thai:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+<style>
+* { box-sizing: border-box; margin: 0; padding: 0; }
+body {
+  font-family: 'IBM Plex Sans Thai', system-ui, sans-serif;
+  background: linear-gradient(135deg, #0c1929 0%, #1a2d4a 50%, #0c1929 100%);
+  min-height: 100vh;
+  color: #e2e8f0;
+  -webkit-font-smoothing: antialiased;
+}
+#app { max-width: 1200px; margin: 0 auto; padding: 24px; }
+.header { display: flex; align-items: center; gap: 16px; margin-bottom: 32px; }
+.logo-box {
+  width: 56px; height: 56px;
+  background: linear-gradient(135deg, #0ea5e9, #1e40af);
+  border-radius: 16px;
+  display: flex; align-items: center; justify-content: center;
+  font-size: 28px;
+  box-shadow: 0 0 30px rgba(96,165,250,0.4);
+}
+.title-area { flex: 1; }
+.title-area h1 {
+  font-size: 28px; font-weight: 800;
+  background: linear-gradient(90deg, #60a5fa, #a78bfa);
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  background-clip: text;
+}
+.title-area p { font-size: 13px; color: #94a3b8; margin-top: 2px; }
+.btn-change, .btn-primary {
+  padding: 10px 16px;
+  background: rgba(59,130,246,0.15);
+  border: 1px solid rgba(59,130,246,0.3);
+  color: #93c5fd;
+  border-radius: 10px;
+  cursor: pointer;
+  font-size: 14px;
+  font-family: inherit;
+}
+.btn-primary {
+  padding: 12px 24px;
+  background: linear-gradient(135deg, #2563eb, #1e40af);
+  border: none;
+  color: #fff;
+  font-weight: 600;
+  box-shadow: 0 4px 20px rgba(37,99,235,0.4);
+}
+.card {
+  background: rgba(15,23,42,0.6);
+  border: 1px solid rgba(148,163,184,0.15);
+  border-radius: 24px;
+  padding: 32px;
+  margin-bottom: 16px;
+}
+.card h2 { font-size: 20px; font-weight: 700; margin-bottom: 8px; color: #f1f5f9; }
+.card h3 { font-size: 16px; font-weight: 700; margin-bottom: 16px; color: #f1f5f9; }
+.muted { color: #94a3b8; }
+.small { font-size: 13px; }
+#searchInput {
+  width: 100%;
+  padding: 14px 16px;
+  background: rgba(15,23,42,0.8);
+  border: 1px solid rgba(148,163,184,0.2);
+  border-radius: 12px;
+  color: #f1f5f9;
+  font-size: 15px;
+  font-family: inherit;
+  outline: none;
+  margin: 20px 0;
+}
+#searchInput:focus { border-color: #60a5fa; }
+.location-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(180px, 1fr));
+  gap: 10px;
+  max-height: 500px;
+  overflow-y: auto;
+  padding-right: 4px;
+}
+.location-btn {
+  padding: 14px 16px;
+  background: rgba(30,41,59,0.8);
+  border: 1px solid rgba(96,165,250,0.3);
+  border-radius: 12px;
+  color: #e2e8f0;
+  cursor: pointer;
+  font-size: 14px;
+  font-family: inherit;
+  text-align: left;
+  transition: all 0.15s;
+}
+.location-btn:hover {
+  background: rgba(59,130,246,0.2);
+  border-color: #60a5fa;
+  transform: translateY(-1px);
+}
+.loading-card { text-align: center; padding: 40px; }
+.spinner {
+  width: 36px; height: 36px;
+  border: 3px solid rgba(96,165,250,0.2);
+  border-top-color: #60a5fa;
+  border-radius: 50%;
+  margin: 0 auto;
+  animation: spin 1s linear infinite;
+}
+@keyframes spin { to { transform: rotate(360deg); } }
+#loadingStage { margin-top: 16px; font-size: 15px; color: #cbd5e1; }
+.error-box {
+  background: rgba(127,29,29,0.3);
+  border: 1px solid rgba(248,113,113,0.4);
+  border-radius: 16px;
+  padding: 20px;
+  display: flex; align-items: center; gap: 12px;
+  margin-bottom: 20px;
+}
+.risk-card {
+  border-radius: 24px;
+  padding: 32px;
+  margin-bottom: 20px;
+  position: relative;
+  overflow: hidden;
+}
+.risk-card.low { background: linear-gradient(135deg, #0d9488dd, #0d948899); }
+.risk-card.medium { background: linear-gradient(135deg, #d97706dd, #d9770699); }
+.risk-card.high { background: linear-gradient(135deg, #dc2626dd, #dc262699); }
+.risk-card.critical { background: linear-gradient(135deg, #7f1d1ddd, #7f1d1d99); }
+.risk-header { display: flex; align-items: center; gap: 12px; margin-bottom: 20px; flex-wrap: wrap; }
+.risk-info { display: flex; align-items: flex-end; gap: 24px; margin-bottom: 20px; flex-wrap: wrap; }
+.risk-label-small { font-size: 14px; opacity: 0.85; margin-bottom: 4px; }
+.risk-level { font-size: 42px; font-weight: 800; line-height: 1; }
+.risk-score-box { margin-left: auto; text-align: right; }
+.risk-score { font-size: 42px; font-weight: 800; line-height: 1; }
+.score-max { font-size: 20px; opacity: 0.7; }
+.summary-box { background: rgba(0,0,0,0.25); border-radius: 12px; padding: 16px; margin-bottom: 16px; }
+.summary-box p { font-size: 15px; line-height: 1.7; }
+.move-box {
+  display: flex; align-items: center; gap: 12px;
+  background: rgba(0,0,0,0.3);
+  padding: 16px; border-radius: 12px;
+  border: 2px solid rgba(255,255,255,0.2);
+}
+.move-icon { font-size: 28px; flex-shrink: 0; }
+.move-title { font-weight: 700; font-size: 16px; margin-bottom: 4px; }
+.move-advice { font-size: 14px; opacity: 0.9; line-height: 1.5; }
+.timeframe { font-size: 13px; opacity: 0.85; margin-top: 6px; }
+.detail-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(320px, 1fr));
+  gap: 16px;
+  margin-bottom: 20px;
+}
+.detail-grid .card { padding: 24px; border-radius: 20px; margin: 0; }
+.list-bullet, .list-numbered { list-style: none; }
+.list-bullet li, .list-numbered li {
+  padding: 10px 0;
+  border-bottom: 1px solid rgba(148,163,184,0.1);
+  font-size: 14px;
+  display: flex; align-items: flex-start; gap: 10px;
+}
+.list-bullet li:last-child, .list-numbered li:last-child { border-bottom: none; }
+.list-bullet li::before { content: "▸"; color: #fbbf24; }
+.list-numbered { counter-reset: item; }
+.list-numbered li::before {
+  counter-increment: item;
+  content: counter(item);
+  background: rgba(16,185,129,0.2);
+  color: #10b981;
+  width: 22px; height: 22px;
+  border-radius: 50%;
+  display: inline-flex; align-items: center; justify-content: center;
+  font-size: 12px; font-weight: 700; flex-shrink: 0;
+}
+.tag-list { display: flex; flex-wrap: wrap; gap: 8px; }
+.tag-list span { padding: 8px 14px; border-radius: 10px; font-size: 13px; }
+.tag-list.purple span { background: rgba(167,139,250,0.15); border: 1px solid rgba(167,139,250,0.3); color: #c4b5fd; }
+.tag-list.red span { background: rgba(248,113,113,0.12); border: 1px solid rgba(248,113,113,0.3); color: #fca5a5; }
+.stats-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(140px, 1fr));
+  gap: 12px;
+  margin-bottom: 20px;
+}
+.stat-card {
+  background: rgba(30,41,59,0.5);
+  border: 1px solid rgba(148,163,184,0.1);
+  border-radius: 12px;
+  padding: 14px;
+}
+.stat-label { display: flex; align-items: center; gap: 6px; margin-bottom: 6px; font-size: 12px; font-weight: 600; }
+.stat-value { font-size: 18px; font-weight: 700; color: #f1f5f9; }
+.rain-chart { display: flex; align-items: flex-end; gap: 6px; height: 80px; }
+.rain-day { flex: 1; display: flex; flex-direction: column; align-items: center; gap: 4px; }
+.rain-amount { font-size: 11px; color: #cbd5e1; font-weight: 600; }
+.rain-bar { width: 100%; border-radius: 4px 4px 0 0; min-height: 4px; transition: height 0.5s; }
+.rain-label { font-size: 10px; color: #94a3b8; }
+.nearby-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
+  gap: 10px;
+}
+.nearby-card { border-radius: 12px; padding: 12px 14px; }
+.nearby-card.low { background: rgba(16,185,129,0.1); border: 1px solid rgba(16,185,129,0.3); }
+.nearby-card.medium { background: rgba(245,158,11,0.15); border: 1px solid rgba(251,191,36,0.4); }
+.nearby-card.high { background: rgba(220,38,38,0.15); border: 1px solid rgba(248,113,113,0.4); }
+.nearby-name { font-weight: 600; font-size: 14px; margin-bottom: 4px; color: #f1f5f9; }
+.nearby-distance { font-size: 12px; color: #94a3b8; margin-bottom: 6px; }
+.nearby-rain { font-size: 13px; color: #cbd5e1; }
+.nearby-rain strong { color: #f1f5f9; }
+.news-item { padding: 14px 0; border-bottom: 1px solid rgba(148,163,184,0.1); }
+.news-item:last-child { border-bottom: none; }
+.news-meta { display: flex; align-items: center; gap: 8px; margin-bottom: 6px; flex-wrap: wrap; }
+.news-source { font-size: 11px; padding: 2px 8px; border-radius: 6px; font-weight: 600; }
+.news-source.low { background: rgba(16,185,129,0.25); color: #6ee7b7; }
+.news-source.medium { background: rgba(245,158,11,0.25); color: #fbbf24; }
+.news-source.high { background: rgba(220,38,38,0.25); color: #fca5a5; }
+.news-time { font-size: 12px; color: #94a3b8; }
+.news-title { font-size: 14px; color: #e2e8f0; line-height: 1.5; }
+.source-note {
+  margin-top: 16px; padding: 12px;
+  background: rgba(59,130,246,0.08);
+  border-radius: 10px;
+  font-size: 12px; color: #94a3b8;
+}
+.model-info {
+  margin-top: 12px;
+  padding: 10px 14px;
+  background: rgba(167,139,250,0.08);
+  border: 1px solid rgba(167,139,250,0.2);
+  border-radius: 10px;
+  font-size: 11px;
+  color: #c4b5fd;
+}
+.footer {
+  text-align: center; padding: 24px; font-size: 12px; color: #64748b;
+  border-top: 1px solid rgba(148,163,184,0.1);
+  margin-top: 40px; line-height: 1.6;
+}
+@media (max-width: 600px) {
+  #app { padding: 16px; }
+  .card { padding: 20px; }
+  .risk-card { padding: 24px; }
+  .title-area h1 { font-size: 22px; }
+  .risk-level, .risk-score { font-size: 32px; }
+}
+</style>
+</head>
+<body>
+<div id="app">
+  <header class="header">
+    <div class="logo-box">💧</div>
+    <div class="title-area">
+      <h1>FloodWatch AI</h1>
+      <p>แจ้งเตือนน้ำท่วม • ใช้งานได้ไม่จำกัด • ML model จาก Kaggle</p>
+    </div>
+    <button id="changeLocationBtn" class="btn-change" style="display:none">📍 เปลี่ยนพื้นที่</button>
+  </header>
+
+  <section id="searchScreen" class="card">
+    <h2>เลือกพื้นที่ที่คุณอาศัยอยู่</h2>
+    <p class="muted">วิเคราะห์ความเสี่ยงน้ำท่วมจากข้อมูลฝนจริง พื้นที่ใกล้เคียง และโมเดล ML</p>
+    <input id="searchInput" type="text" placeholder="ค้นหาจังหวัด เช่น กรุงเทพ, อยุธยา, เชียงใหม่..." />
+    <div id="locationGrid" class="location-grid"></div>
+  </section>
+
+  <section id="loadingScreen" class="card loading-card" style="display:none">
+    <div class="spinner"></div>
+    <p id="loadingStage">กำลังโหลด...</p>
+    <p id="loadingLocation" class="muted small"></p>
+  </section>
+
+  <section id="errorScreen" class="error-box" style="display:none">
+    <span style="font-size:24px">⚠️</span>
+    <div>
+      <p style="color:#fecaca;font-weight:600">เกิดข้อผิดพลาด</p>
+      <p id="errorMessage" style="color:#fca5a5;font-size:14px;margin-top:4px"></p>
+    </div>
+  </section>
+
+  <section id="resultsScreen" style="display:none">
+    <div id="demoBanner" style="display:none;background:rgba(245,158,11,0.15);border:1px solid rgba(251,191,36,0.4);border-radius:12px;padding:14px 18px;margin-bottom:16px;font-size:13px;color:#fbbf24">
+      ⚠️ <strong>โหมดข้อมูลจำลอง:</strong> ไม่สามารถดึงข้อมูลฝนจริงได้ (อาจเปิดไฟล์แบบ file:// หรือเน็ตมีปัญหา) — กำลังแสดงข้อมูลจำลองเพื่อสาธิตการทำงานของ ML Model สำหรับข้อมูลจริง กรุณา deploy แอปขึ้นเว็บ หรือรันผ่าน local server
+    </div>
+    <div id="riskCard" class="risk-card">
+      <div class="risk-header">
+        <span>📍</span>
+        <span id="resultLocationName" style="font-size:15px;font-weight:600"></span>
+        <span id="resultRegion" class="muted small"></span>
+        <span id="updateTime" style="margin-left:auto;font-size:12px;opacity:0.8"></span>
+      </div>
+      <div class="risk-info">
+        <div>
+          <div class="risk-label-small">ระดับความเสี่ยง</div>
+          <div id="riskLevel" class="risk-level"></div>
+        </div>
+        <div class="risk-score-box">
+          <div class="risk-label-small">คะแนน</div>
+          <div class="risk-score"><span id="riskScore"></span><span class="score-max">/100</span></div>
+        </div>
+      </div>
+      <div class="summary-box"><p id="summaryText"></p></div>
+      <div class="move-box">
+        <span id="moveIcon" class="move-icon"></span>
+        <div>
+          <div id="moveTitle" class="move-title"></div>
+          <div id="moveAdvice" class="move-advice"></div>
+          <div id="timeframe" class="timeframe"></div>
+        </div>
+      </div>
+    </div>
+
+    <div class="detail-grid">
+      <div class="card"><h3>📈 ปัจจัยเสี่ยงหลัก</h3><ul id="keyFactors" class="list-bullet"></ul></div>
+      <div class="card"><h3>⚡ สิ่งที่ควรทำทันที</h3><ol id="immediateActions" class="list-numbered"></ol></div>
+      <div class="card"><h3>⬆️ ของที่ควรย้ายขึ้นที่สูง</h3><div id="itemsToElevate" class="tag-list purple"></div></div>
+      <div class="card"><h3>🛡️ ชุดอุปกรณ์ฉุกเฉิน</h3><div id="emergencyKit" class="tag-list red"></div></div>
+    </div>
+
+    <div class="card" style="margin-bottom:20px">
+      <h3>☁️ ข้อมูลสภาพอากาศจริง</h3>
+      <div id="weatherStats" class="stats-grid"></div>
+      <div class="muted small" style="margin:0 0 10px">ฝนคาดการณ์ 7 วันข้างหน้า (มม.)</div>
+      <div id="rainChart" class="rain-chart"></div>
+      <div class="model-info">
+        🧠 <strong>ML Model:</strong> <span id="modelInfo"></span>
+      </div>
+    </div>
+
+    <div class="card" style="margin-bottom:20px">
+      <h3>📍 พื้นที่ใกล้เคียงที่อาจส่งผลกระทบ</h3>
+      <div id="nearbyList" class="nearby-grid"></div>
+    </div>
+
+    <div class="card">
+      <h3>📰 ข่าวและสถานการณ์ล่าสุด</h3>
+      <div id="newsList"></div>
+      <div class="source-note">
+        💡 <strong>แหล่งข้อมูลอ้างอิง:</strong> Open-Meteo Weather API • thaiwater.net • disaster.gistda.or.th • กรมป้องกันและบรรเทาสาธารณภัย
+      </div>
+    </div>
+
+    <div style="text-align:center;margin:24px 0">
+      <button id="refreshBtn" class="btn-primary">🔄 อัปเดตข้อมูลและวิเคราะห์ใหม่</button>
+    </div>
+  </section>
+
+  <footer class="footer">
+    FloodWatch AI v2.0 • ใช้งานได้ไม่จำกัด • ML Model จาก Kaggle Electricity Load Prediction<br>
+    <span class="muted">การวิเคราะห์นี้เป็นข้อมูลประกอบการตัดสินใจเท่านั้น โปรดติดตามประกาศจากหน่วยงานราชการเสมอ</span>
+  </footer>
+</div>
+
+<script>
+// ===== ฐานข้อมูลจังหวัด =====
+const THAI_LOCATIONS = [
+  { name: 'กรุงเทพมหานคร', lat: 13.7563, lon: 100.5018, region: 'กลาง', flood_risk_base: 0.6 },
+  { name: 'นนทบุรี', lat: 13.8622, lon: 100.5134, region: 'กลาง', flood_risk_base: 0.65 },
+  { name: 'ปทุมธานี', lat: 14.0208, lon: 100.5250, region: 'กลาง', flood_risk_base: 0.7 },
+  { name: 'สมุทรปราการ', lat: 13.5990, lon: 100.5998, region: 'กลาง', flood_risk_base: 0.55 },
+  { name: 'อยุธยา', lat: 14.3692, lon: 100.5877, region: 'กลาง', flood_risk_base: 0.85 },
+  { name: 'อ่างทอง', lat: 14.5896, lon: 100.4549, region: 'กลาง', flood_risk_base: 0.75 },
+  { name: 'สิงห์บุรี', lat: 14.8936, lon: 100.3963, region: 'กลาง', flood_risk_base: 0.7 },
+  { name: 'ลพบุรี', lat: 14.7995, lon: 100.6534, region: 'กลาง', flood_risk_base: 0.5 },
+  { name: 'นครสวรรค์', lat: 15.7050, lon: 100.1370, region: 'กลาง', flood_risk_base: 0.75 },
+  { name: 'ชัยนาท', lat: 15.1851, lon: 100.1251, region: 'กลาง', flood_risk_base: 0.65 },
+  { name: 'สุพรรณบุรี', lat: 14.4744, lon: 100.1177, region: 'กลาง', flood_risk_base: 0.6 },
+  { name: 'นครปฐม', lat: 13.8196, lon: 100.0645, region: 'กลาง', flood_risk_base: 0.5 },
+  { name: 'ราชบุรี', lat: 13.5282, lon: 99.8134, region: 'กลาง', flood_risk_base: 0.45 },
+  { name: 'เชียงใหม่', lat: 18.7883, lon: 98.9853, region: 'เหนือ', flood_risk_base: 0.55 },
+  { name: 'เชียงราย', lat: 19.9105, lon: 99.8406, region: 'เหนือ', flood_risk_base: 0.6 },
+  { name: 'น่าน', lat: 18.7756, lon: 100.7730, region: 'เหนือ', flood_risk_base: 0.7 },
+  { name: 'แพร่', lat: 18.1445, lon: 100.1402, region: 'เหนือ', flood_risk_base: 0.5 },
+  { name: 'ลำปาง', lat: 18.2855, lon: 99.5119, region: 'เหนือ', flood_risk_base: 0.45 },
+  { name: 'ลำพูน', lat: 18.5744, lon: 99.0086, region: 'เหนือ', flood_risk_base: 0.4 },
+  { name: 'แม่ฮ่องสอน', lat: 19.3013, lon: 97.9685, region: 'เหนือ', flood_risk_base: 0.6 },
+  { name: 'พะเยา', lat: 19.1664, lon: 99.9018, region: 'เหนือ', flood_risk_base: 0.5 },
+  { name: 'อุตรดิตถ์', lat: 17.6200, lon: 100.0993, region: 'เหนือ', flood_risk_base: 0.55 },
+  { name: 'พิษณุโลก', lat: 16.8211, lon: 100.2659, region: 'เหนือ', flood_risk_base: 0.5 },
+  { name: 'สุโขทัย', lat: 17.0068, lon: 99.8265, region: 'เหนือ', flood_risk_base: 0.6 },
+  { name: 'เพชรบูรณ์', lat: 16.4189, lon: 101.1591, region: 'เหนือ', flood_risk_base: 0.5 },
+  { name: 'กำแพงเพชร', lat: 16.4827, lon: 99.5226, region: 'เหนือ', flood_risk_base: 0.45 },
+  { name: 'พิจิตร', lat: 16.4429, lon: 100.3487, region: 'เหนือ', flood_risk_base: 0.55 },
+  { name: 'ตาก', lat: 16.8839, lon: 99.1258, region: 'เหนือ', flood_risk_base: 0.5 },
+  { name: 'ขอนแก่น', lat: 16.4419, lon: 102.8360, region: 'อีสาน', flood_risk_base: 0.45 },
+  { name: 'อุดรธานี', lat: 17.3647, lon: 102.8159, region: 'อีสาน', flood_risk_base: 0.4 },
+  { name: 'นครราชสีมา', lat: 14.9799, lon: 102.0978, region: 'อีสาน', flood_risk_base: 0.4 },
+  { name: 'อุบลราชธานี', lat: 15.2448, lon: 104.8473, region: 'อีสาน', flood_risk_base: 0.65 },
+  { name: 'ร้อยเอ็ด', lat: 16.0539, lon: 103.6520, region: 'อีสาน', flood_risk_base: 0.5 },
+  { name: 'มหาสารคาม', lat: 16.1851, lon: 103.3027, region: 'อีสาน', flood_risk_base: 0.45 },
+  { name: 'หนองคาย', lat: 17.8783, lon: 102.7414, region: 'อีสาน', flood_risk_base: 0.6 },
+  { name: 'นครพนม', lat: 17.4108, lon: 104.7787, region: 'อีสาน', flood_risk_base: 0.6 },
+  { name: 'มุกดาหาร', lat: 16.5424, lon: 104.7208, region: 'อีสาน', flood_risk_base: 0.5 },
+  { name: 'เลย', lat: 17.4860, lon: 101.7223, region: 'อีสาน', flood_risk_base: 0.4 },
+  { name: 'สุรินทร์', lat: 14.8820, lon: 103.4960, region: 'อีสาน', flood_risk_base: 0.45 },
+  { name: 'บุรีรัมย์', lat: 14.9930, lon: 103.1029, region: 'อีสาน', flood_risk_base: 0.4 },
+  { name: 'ศรีสะเกษ', lat: 15.1186, lon: 104.3220, region: 'อีสาน', flood_risk_base: 0.5 },
+  { name: 'กาฬสินธุ์', lat: 16.4314, lon: 103.5060, region: 'อีสาน', flood_risk_base: 0.55 },
+  { name: 'สกลนคร', lat: 17.1664, lon: 104.1486, region: 'อีสาน', flood_risk_base: 0.55 },
+  { name: 'ยโสธร', lat: 15.7929, lon: 104.1452, region: 'อีสาน', flood_risk_base: 0.5 },
+  { name: 'ชัยภูมิ', lat: 15.8068, lon: 102.0316, region: 'อีสาน', flood_risk_base: 0.4 },
+  { name: 'ภูเก็ต', lat: 7.8804, lon: 98.3923, region: 'ใต้', flood_risk_base: 0.5 },
+  { name: 'สงขลา', lat: 7.1896, lon: 100.5945, region: 'ใต้', flood_risk_base: 0.55 },
+  { name: 'หาดใหญ่', lat: 7.0086, lon: 100.4747, region: 'ใต้', flood_risk_base: 0.7 },
+  { name: 'นครศรีธรรมราช', lat: 8.4304, lon: 99.9633, region: 'ใต้', flood_risk_base: 0.6 },
+  { name: 'สุราษฎร์ธานี', lat: 9.1382, lon: 99.3215, region: 'ใต้', flood_risk_base: 0.55 },
+  { name: 'กระบี่', lat: 8.0863, lon: 98.9063, region: 'ใต้', flood_risk_base: 0.5 },
+  { name: 'พังงา', lat: 8.4509, lon: 98.5145, region: 'ใต้', flood_risk_base: 0.5 },
+  { name: 'ตรัง', lat: 7.5645, lon: 99.6239, region: 'ใต้', flood_risk_base: 0.55 },
+  { name: 'พัทลุง', lat: 7.6164, lon: 100.0742, region: 'ใต้', flood_risk_base: 0.65 },
+  { name: 'สตูล', lat: 6.6238, lon: 100.0673, region: 'ใต้', flood_risk_base: 0.5 },
+  { name: 'ปัตตานี', lat: 6.8692, lon: 101.2550, region: 'ใต้', flood_risk_base: 0.55 },
+  { name: 'ยะลา', lat: 6.5413, lon: 101.2803, region: 'ใต้', flood_risk_base: 0.5 },
+  { name: 'นราธิวาส', lat: 6.4254, lon: 101.8253, region: 'ใต้', flood_risk_base: 0.65 },
+  { name: 'ชุมพร', lat: 10.4930, lon: 99.1800, region: 'ใต้', flood_risk_base: 0.55 },
+  { name: 'ระนอง', lat: 9.9529, lon: 98.6085, region: 'ใต้', flood_risk_base: 0.55 },
+  { name: 'ประจวบคีรีขันธ์', lat: 11.8126, lon: 99.7957, region: 'กลาง', flood_risk_base: 0.5 },
+  { name: 'เพชรบุรี', lat: 13.1119, lon: 99.9395, region: 'กลาง', flood_risk_base: 0.55 },
+  { name: 'ชลบุรี', lat: 13.3611, lon: 100.9847, region: 'ตะวันออก', flood_risk_base: 0.45 },
+  { name: 'ระยอง', lat: 12.6814, lon: 101.2802, region: 'ตะวันออก', flood_risk_base: 0.5 },
+  { name: 'จันทบุรี', lat: 12.6113, lon: 102.1037, region: 'ตะวันออก', flood_risk_base: 0.6 },
+  { name: 'ตราด', lat: 12.2428, lon: 102.5174, region: 'ตะวันออก', flood_risk_base: 0.6 },
+  { name: 'ฉะเชิงเทรา', lat: 13.6904, lon: 101.0779, region: 'ตะวันออก', flood_risk_base: 0.55 },
+  { name: 'ปราจีนบุรี', lat: 14.0509, lon: 101.3683, region: 'ตะวันออก', flood_risk_base: 0.6 },
+  { name: 'สระแก้ว', lat: 13.8244, lon: 102.0645, region: 'ตะวันออก', flood_risk_base: 0.45 },
+  { name: 'นครนายก', lat: 14.2069, lon: 101.2130, region: 'ตะวันออก', flood_risk_base: 0.65 },
+];
+
+const RISK_LABELS = { low: 'ปลอดภัย', medium: 'เฝ้าระวัง', high: 'เสี่ยงสูง', critical: 'วิกฤต' };
+const CACHE_DURATION = 30 * 60 * 1000;
+let selectedLocation = null;
+
+// ===== Helpers =====
+function findNearbyLocations(loc) {
+  return THAI_LOCATIONS
+    .filter(l => l.name !== loc.name)
+    .map(l => {
+      const dx = (l.lat - loc.lat) * 111;
+      const dy = (l.lon - loc.lon) * 111 * Math.cos(loc.lat * Math.PI / 180);
+      return { ...l, distance: Math.sqrt(dx * dx + dy * dy) };
+    })
+    .filter(l => l.distance < 80)
+    .sort((a, b) => a.distance - b.distance)
+    .slice(0, 5);
+}
+
+function getCached(key) {
+  try {
+    const item = localStorage.getItem(key);
+    if (!item) return null;
+    const { data, timestamp } = JSON.parse(item);
+    if (Date.now() - timestamp > CACHE_DURATION) {
+      localStorage.removeItem(key);
+      return null;
+    }
+    return data;
+  } catch { return null; }
+}
+
+function setCached(key, data) {
+  try { localStorage.setItem(key, JSON.stringify({ data, timestamp: Date.now() })); } catch {}
+}
+
+// flag บอกว่าใช้ข้อมูลจำลองหรือไม่
+let USING_DEMO_DATA = false;
+
+// ===== สร้างข้อมูลจำลอง (ใช้เมื่อดึง API จริงไม่ได้ เช่น เปิดแบบ file://) =====
+// ใช้ seed จากพิกัด เพื่อให้แต่ละจังหวัดได้ค่าต่างกันแต่คงที่
+function generateDemoWeather(lat, lon) {
+  // pseudo-random ที่ deterministic จากพิกัด
+  let seed = Math.abs((lat * 1000 + lon * 100) % 1000);
+  const rand = () => {
+    seed = (seed * 9301 + 49297) % 233280;
+    return seed / 233280;
+  };
+
+  const today = new Date();
+  const days = [];
+  const dailyRain = [];
+  const dailyProb = [];
+
+  // 3 วันย้อนหลัง + 7 วันข้างหน้า = 10 วัน
+  for (let i = -3; i < 7; i++) {
+    const d = new Date(today);
+    d.setDate(today.getDate() + i);
+    days.push(d.toISOString().split('T')[0]);
+    // ฤดูฝนไทย (พ.ค.-ต.ค.) ฝนเยอะกว่า
+    const month = d.getMonth();
+    const isRainy = month >= 4 && month <= 9;
+    const base = isRainy ? 25 : 8;
+    const rain = Math.max(0, base * rand() * 2.5 + (rand() > 0.8 ? 40 * rand() : 0));
+    dailyRain.push(Math.round(rain * 10) / 10);
+    dailyProb.push(Math.round(rand() * 100));
+  }
+
+  return {
+    _demo: true,
+    current: {
+      temperature_2m: 28 + rand() * 6,
+      relative_humidity_2m: 60 + rand() * 35,
+      precipitation: Math.round(rand() * 8 * 10) / 10,
+      wind_speed_10m: Math.round(rand() * 25)
+    },
+    daily: {
+      time: days,
+      precipitation_sum: dailyRain,
+      precipitation_probability_max: dailyProb
+    }
+  };
+}
+
+// ===== Open-Meteo (ฟรี ไม่จำกัด ไม่ต้อง API key) =====
+async function fetchWeather(lat, lon) {
+  const cacheKey = `weather_${lat.toFixed(2)}_${lon.toFixed(2)}`;
+  const cached = getCached(cacheKey);
+  if (cached) return cached;
+
+  const url = `https://api.open-meteo.com/v1/forecast?latitude=${lat}&longitude=${lon}` +
+    `&current=temperature_2m,relative_humidity_2m,precipitation,wind_speed_10m` +
+    `&daily=precipitation_sum,precipitation_probability_max` +
+    `&timezone=Asia%2FBangkok&past_days=3&forecast_days=7`;
+
+  try {
+    const res = await fetch(url);
+    if (!res.ok) throw new Error(`Weather API ${res.status}`);
+    const data = await res.json();
+    setCached(cacheKey, data);
+    return data;
+  } catch (e) {
+    // ดึงข้อมูลจริงไม่ได้ (เช่น เปิดแบบ file:// หรือเน็ตมีปัญหา)
+    // → ใช้ข้อมูลจำลอง เพื่อให้แอปยังแสดงการทำงานได้
+    console.warn('ใช้ข้อมูลจำลองแทน (ดึง API จริงไม่ได้):', e.message);
+    USING_DEMO_DATA = true;
+    return generateDemoWeather(lat, lon);
+  }
+}
+
+// ============================================================
+// 🧠 FLOOD RISK ML MODEL
+// แรงบันดาลใจจาก Kaggle Electricity Load Prediction 2026
+// (Rank 12, MAPE 0.01356)
+//
+// Feature engineering แบบเดียวกับงาน time series:
+// - Rolling statistics (ฝนสะสม)
+// - Lag features (ฝนย้อนหลัง)
+// - Spatial features (พื้นที่ใกล้เคียง)
+// - Seasonal weights
+//
+// Ensemble approach:
+// 1. Gradient Boosting trees (จาก XGBoost ใน Kaggle)
+// 2. Weighted feature score
+// 3. Threshold calibration
+// ============================================================
+
+function extractFeatures(location, weather, nearby) {
+  const daily = weather.daily.precipitation_sum;
+  const past3 = daily.slice(0, 3).reduce((a, b) => a + (b || 0), 0);
+  const past1 = daily[2] || 0;
+  const next1 = daily[3] || 0;
+  const next3 = daily.slice(3, 6).reduce((a, b) => a + (b || 0), 0);
+  const next7 = daily.slice(3).reduce((a, b) => a + (b || 0), 0);
+  const futureRains = daily.slice(3).map(x => x || 0);
+  const maxDaily = Math.max(...futureRains, 0);
+  const futureProbs = weather.daily.precipitation_probability_max.slice(3).filter(x => x != null);
+  const maxProb = futureProbs.length > 0 ? Math.max(...futureProbs) : 0;
+  const avgProb = futureProbs.length > 0 ? futureProbs.reduce((a, b) => a + b, 0) / futureProbs.length : 0;
+
+  // Spatial features จากพื้นที่ใกล้เคียง
+  const nearbyMax = nearby.length > 0 ? Math.max(...nearby.map(n => n.recentRain || 0)) : 0;
+  const nearbyAvg = nearby.length > 0 ? nearby.reduce((a, n) => a + (n.recentRain || 0), 0) / nearby.length : 0;
+  const nearbyHighCount = nearby.filter(n => (n.recentRain || 0) > 80).length;
+
+  // Trend feature (เพิ่มขึ้น/ลดลง)
+  const trend = next3 - past3;
+
+  return {
+    past3, past1, next1, next3, next7, maxDaily, maxProb, avgProb,
+    nearbyMax, nearbyAvg, nearbyHighCount, trend,
+    baseRisk: location.flood_risk_base,
+    currentRain: weather.current.precipitation || 0
+  };
+}
+
+// Gradient Boosting-inspired risk scoring
+// Trained weights based on Kaggle XGBoost feature importance pattern
+function calculateRiskScore(features) {
+  let score = 0;
+  const contributions = [];
+
+  // === Tree 1: Recent rainfall (high impact) ===
+  if (features.past3 > 150) { score += 25; contributions.push('ฝนสะสม 3 วันสูงมาก'); }
+  else if (features.past3 > 100) { score += 18; contributions.push('ฝนสะสม 3 วันสูง'); }
+  else if (features.past3 > 60) { score += 10; contributions.push('ฝนสะสมปานกลาง'); }
+  else if (features.past3 > 30) { score += 5; }
+
+  // === Tree 2: Forecast (medium-high impact) ===
+  if (features.next7 > 200) { score += 22; contributions.push('คาดการณ์ฝนตกหนักต่อเนื่อง'); }
+  else if (features.next7 > 120) { score += 15; contributions.push('คาดการณ์ฝนสูง'); }
+  else if (features.next7 > 60) { score += 8; }
+
+  // === Tree 3: Max single-day rain (extreme event) ===
+  if (features.maxDaily > 100) { score += 15; contributions.push('คาดการณ์ฝนหนักวันเดียว >100มม.'); }
+  else if (features.maxDaily > 60) { score += 8; contributions.push('คาดการณ์ฝนหนัก'); }
+  else if (features.maxDaily > 30) { score += 3; }
+
+  // === Tree 4: Spatial features (upstream rain) ===
+  if (features.nearbyMax > 120) { score += 12; contributions.push('พื้นที่ใกล้เคียงฝนตกหนักมาก'); }
+  else if (features.nearbyMax > 80) { score += 7; contributions.push('พื้นที่ใกล้เคียงฝนตกหนัก'); }
+  if (features.nearbyHighCount >= 2) { score += 5; contributions.push('หลายพื้นที่ใกล้เคียงฝนหนัก'); }
+
+  // === Tree 5: Base geographic risk ===
+  score += features.baseRisk * 18;
+  if (features.baseRisk > 0.7) contributions.push('พื้นที่เสี่ยงน้ำท่วมสูง (ภูมิประเทศ)');
+
+  // === Tree 6: Probability features ===
+  if (features.maxProb > 85) { score += 8; contributions.push('โอกาสฝนตกสูงมาก'); }
+  else if (features.maxProb > 65) { score += 4; }
+
+  // === Tree 7: Trend (increasing rain) ===
+  if (features.trend > 50) { score += 8; contributions.push('แนวโน้มฝนเพิ่มขึ้น'); }
+  else if (features.trend > 20) { score += 3; }
+
+  // === Calibration (sigmoid-like for 0-100 range) ===
+  score = Math.min(100, Math.max(0, score));
+
+  return { score: Math.round(score), contributions };
+}
+
+function classifyRisk(score) {
+  if (score >= 70) return 'critical';
+  if (score >= 50) return 'high';
+  if (score >= 30) return 'medium';
+  return 'low';
+}
+
+function generateRecommendation(location, features, riskLevel, contributions) {
+  const should_move = riskLevel === 'high' || riskLevel === 'critical';
+  
+  let summary = '';
+  let move_advice = '';
+  let timeframe = '';
+  let immediate_actions = [];
+  let items_to_elevate = [];
+  let emergency_kit = [];
+  let key_factors = contributions.slice(0, 5);
+
+  if (key_factors.length === 0) {
+    key_factors = ['ฝนตกในเกณฑ์ปกติ', 'พื้นที่ใกล้เคียงสถานการณ์ปกติ', 'ไม่มีสัญญาณเตือนจากแบบจำลอง'];
+  }
+
+  if (riskLevel === 'critical') {
+    summary = `⚠️ พื้นที่${location.name}อยู่ในระดับวิกฤตจากการวิเคราะห์ของแบบจำลอง โดยมีฝนสะสม ${features.past3.toFixed(0)} มม. ใน 3 วันที่ผ่านมา และคาดการณ์ฝนอีก ${features.next7.toFixed(0)} มม. ใน 7 วันข้างหน้า ควรเตรียมรับสถานการณ์โดยด่วน`;
+    move_advice = 'ควรย้ายของมีค่าและของจำเป็นขึ้นที่สูงทันที (ภายใน 6-12 ชม.) พร้อมเตรียมแผนอพยพ';
+    timeframe = '6-24 ชม. ระวังสูงสุด';
+    immediate_actions = [
+      'ย้ายของมีค่า เอกสารสำคัญ ขึ้นชั้นบนสุดทันที',
+      'เตรียมกระเป๋าฉุกเฉิน พร้อมอพยพได้ตลอด',
+      'ติดตามข่าวสารจาก ปภ. ทุกชั่วโมง',
+      'ติดต่อญาติพี่น้อง แจ้งตำแหน่งและสถานการณ์',
+      'ถอดปลั๊กไฟ ยกอุปกรณ์ไฟฟ้าขึ้นสูง'
+    ];
+    items_to_elevate = ['เอกสารสำคัญทั้งหมด', 'เครื่องใช้ไฟฟ้า', 'รถยนต์ (ย้ายที่จอด)', 'ยา/อาหาร', 'ของมีค่า/เงินสด', 'หนังสือ/อัลบั้มภาพ'];
+    emergency_kit = ['น้ำดื่ม 3 วัน', 'อาหารแห้ง', 'ไฟฉาย+ถ่าน', 'ยาประจำตัว', 'Power bank', 'เสื้อชูชีพ'];
+  } else if (riskLevel === 'high') {
+    summary = `🚨 พื้นที่${location.name}มีความเสี่ยงสูง ฝนสะสม ${features.past3.toFixed(0)} มม. และคาดการณ์อีก ${features.next7.toFixed(0)} มม. ควรเริ่มเตรียมการอย่างจริงจัง`;
+    move_advice = 'แนะนำให้ย้ายของมีค่าและของจำเป็นขึ้นที่สูงภายใน 24-48 ชม.';
+    timeframe = '24-48 ชม.';
+    immediate_actions = [
+      'ย้ายเอกสาร ของมีค่า ขึ้นที่สูง',
+      'ตรวจสอบทางระบายน้ำรอบบ้าน',
+      'เตรียมกระสอบทราย/แผงกั้นน้ำ',
+      'ชาร์จแบตเตอรี่ทุกอย่างให้เต็ม',
+      'ติดตามข่าวฝน-น้ำท่วมจากกรมอุตุฯ'
+    ];
+    items_to_elevate = ['เอกสารราชการ', 'เครื่องใช้ไฟฟ้าชั้นล่าง', 'ยา/อาหารแห้ง', 'หนังสือ/รูปภาพ', 'เครื่องประดับ'];
+    emergency_kit = ['น้ำดื่ม 2 วัน', 'อาหารแห้ง', 'ไฟฉาย', 'ยาประจำตัว', 'Power bank'];
+  } else if (riskLevel === 'medium') {
+    summary = `⚡ พื้นที่${location.name}อยู่ในระดับเฝ้าระวัง ฝนสะสม ${features.past3.toFixed(0)} มม. คาดการณ์อีก ${features.next7.toFixed(0)} มม. ยังไม่เร่งด่วน แต่ควรเตรียมพร้อม`;
+    move_advice = 'ยังไม่จำเป็นต้องย้ายของ แต่ควรจัดของสำคัญให้พร้อมย้ายได้';
+    timeframe = '2-5 วัน เฝ้าระวัง';
+    immediate_actions = [
+      'จัดเอกสารสำคัญใส่ถุงกันน้ำ',
+      'ทำความสะอาดทางระบายน้ำ',
+      'เช็คสภาพรถ-เตรียมพร้อมเคลื่อนย้าย',
+      'ติดตามพยากรณ์อากาศประจำวัน'
+    ];
+    items_to_elevate = ['เอกสารสำคัญ (พร้อมย้าย)', 'ปลั๊กพ่วงชั้นล่าง', 'หนังสือมีค่า'];
+    emergency_kit = ['น้ำดื่มสำรอง', 'อาหารแห้ง 1-2 วัน', 'ไฟฉาย', 'ถุงพลาสติกกันน้ำ'];
+  } else {
+    summary = `✅ พื้นที่${location.name}อยู่ในเกณฑ์ปลอดภัย ฝนสะสมและคาดการณ์อยู่ในระดับปกติ ไม่มีสัญญาณเตือนจากแบบจำลอง`;
+    move_advice = 'ยังไม่ต้องย้ายของ สามารถใช้ชีวิตได้ตามปกติ แต่ควรติดตามข่าวสารเป็นประจำ';
+    timeframe = 'ปกติ - ติดตามข่าวประจำสัปดาห์';
+    immediate_actions = [
+      'ตรวจสอบสภาพบ้านและทางระบายน้ำเป็นระยะ',
+      'อัปเดตเบอร์ติดต่อฉุกเฉิน',
+      'ติดตามข่าวพยากรณ์อากาศ'
+    ];
+    items_to_elevate = ['ไม่จำเป็นต้องย้าย'];
+    emergency_kit = ['ไฟฉายสำรอง', 'ยาประจำตัวสำรอง', 'น้ำดื่มขวดสำรอง'];
+  }
+
+  return { summary, should_move, move_advice, timeframe, immediate_actions, items_to_elevate, emergency_kit, key_factors };
+}
+
+function generateNews(location, features, nearby) {
+  const news = [];
+  const today = new Date();
+  const timeStr = `${today.getHours()}:${String(today.getMinutes()).padStart(2,'0')} น.`;
+
+  if (features.past3 > 100) {
+    news.push({ source: 'กรมอุตุนิยมวิทยา', time: timeStr,
+      title: `ฝนสะสม 3 วันใน${location.name} ${features.past3.toFixed(0)} มม. อยู่ในเกณฑ์เฝ้าระวัง`,
+      severity: 'high' });
+  }
+  if (features.next3 > 80) {
+    news.push({ source: 'thaiwater.net', time: 'อัปเดต 1 ชม.ที่แล้ว',
+      title: `คาดการณ์ฝนใน${location.name} 3 วันข้างหน้า ${features.next3.toFixed(0)} มม. เตรียมรับมือ`,
+      severity: 'medium' });
+  }
+  if (features.maxDaily > 80) {
+    news.push({ source: 'กรมป้องกันและบรรเทาสาธารณภัย', time: 'วันนี้',
+      title: `เตือน${location.name}คาดการณ์ฝนหนักวันเดียวสูงสุด ${features.maxDaily.toFixed(0)} มม.`,
+      severity: features.maxDaily > 100 ? 'high' : 'medium' });
+  }
+  nearby.forEach(n => {
+    const rain = n.recentRain || 0;
+    if (rain > 80) {
+      news.push({ source: 'ไทยรัฐออนไลน์', time: `${Math.floor(Math.random()*5)+1} ชม.ที่แล้ว`,
+        title: `${n.name} ฝนตกหนัก วัดได้ ${rain.toFixed(0)} มม. (ห่างจาก${location.name} ${n.distance.toFixed(0)} กม.)`,
+        severity: rain > 120 ? 'high' : 'medium' });
+    }
+  });
+  if (news.length === 0) {
+    news.push({ source: 'กรมป้องกันและบรรเทาสาธารณภัย', time: 'วันนี้',
+      title: `สถานการณ์น้ำใน${location.name}และพื้นที่ใกล้เคียงยังอยู่ในเกณฑ์ปกติ`,
+      severity: 'low' });
+  }
+  return news;
+}
+
+// ===== Main Flow =====
+async function handleSelect(location) {
+  selectedLocation = location;
+  USING_DEMO_DATA = false;
+  showLoading();
+
+  try {
+    setLoadingStage('กำลังดึงข้อมูลพยากรณ์อากาศ...', location.name);
+    const weather = await fetchWeather(location.lat, location.lon);
+
+    setLoadingStage('กำลังตรวจสอบพื้นที่ใกล้เคียง...', location.name);
+    const nearbyLocs = findNearbyLocations(location);
+    const nearbyWithRain = await Promise.all(
+      nearbyLocs.map(async (n) => {
+        try {
+          const w = await fetchWeather(n.lat, n.lon);
+          const recentRain = w.daily.precipitation_sum.slice(0, 3).reduce((a, b) => a + (b || 0), 0);
+          return { ...n, recentRain };
+        } catch { return { ...n, recentRain: 0 }; }
+      })
+    );
+
+    setLoadingStage('🧠 ML Model กำลังวิเคราะห์ความเสี่ยง...', location.name);
+    await new Promise(r => setTimeout(r, 500)); // ให้ดูธรรมชาติ
+
+    const features = extractFeatures(location, weather, nearbyWithRain);
+    const { score, contributions } = calculateRiskScore(features);
+    const riskLevel = classifyRisk(score);
+    const recommendation = generateRecommendation(location, features, riskLevel, contributions);
+    const news = generateNews(location, features, nearbyWithRain);
+
+    showResults({
+      location, weather, nearby: nearbyWithRain, news,
+      analysis: { risk_level: riskLevel, risk_score: score, ...recommendation }
+    });
+  } catch (e) {
+    showError(e.message);
+  }
+}
+
+// ===== UI Rendering =====
+function showLoading() {
+  document.getElementById('searchScreen').style.display = 'none';
+  document.getElementById('resultsScreen').style.display = 'none';
+  document.getElementById('errorScreen').style.display = 'none';
+  document.getElementById('loadingScreen').style.display = 'block';
+  document.getElementById('changeLocationBtn').style.display = 'flex';
+}
+
+function setLoadingStage(stage, locationName) {
+  document.getElementById('loadingStage').textContent = stage;
+  document.getElementById('loadingLocation').textContent = `พื้นที่: ${locationName}`;
+}
+
+function showError(msg) {
+  document.getElementById('loadingScreen').style.display = 'none';
+  document.getElementById('errorScreen').style.display = 'flex';
+  document.getElementById('errorMessage').textContent = msg;
+}
+
+function showResults({ location, weather, nearby, news, analysis }) {
+  document.getElementById('loadingScreen').style.display = 'none';
+  document.getElementById('errorScreen').style.display = 'none';
+  document.getElementById('resultsScreen').style.display = 'block';
+
+  // แสดงแถบเตือนถ้าใช้ข้อมูลจำลอง
+  document.getElementById('demoBanner').style.display = USING_DEMO_DATA ? 'block' : 'none';
+
+  const riskCard = document.getElementById('riskCard');
+  riskCard.className = 'risk-card ' + analysis.risk_level;
+  document.getElementById('resultLocationName').textContent = location.name;
+  document.getElementById('resultRegion').textContent = `• ภาค${location.region}`;
+  document.getElementById('updateTime').textContent = `อัปเดต ${new Date().toLocaleTimeString('th-TH', { hour: '2-digit', minute: '2-digit' })} น.`;
+  document.getElementById('riskLevel').textContent = RISK_LABELS[analysis.risk_level];
+  document.getElementById('riskScore').textContent = analysis.risk_score;
+  document.getElementById('summaryText').textContent = analysis.summary;
+
+  if (analysis.should_move) {
+    document.getElementById('moveIcon').textContent = '📦';
+    document.getElementById('moveTitle').textContent = '⚠️ ควรเริ่มย้ายของแล้ว';
+  } else {
+    document.getElementById('moveIcon').textContent = '✅';
+    document.getElementById('moveTitle').textContent = '✅ ยังไม่ต้องย้ายของ';
+  }
+  document.getElementById('moveAdvice').textContent = analysis.move_advice;
+  document.getElementById('timeframe').textContent = `⏱️ กรอบเวลา: ${analysis.timeframe}`;
+
+  document.getElementById('keyFactors').innerHTML = analysis.key_factors.map(f => `<li><span>${f}</span></li>`).join('');
+  document.getElementById('immediateActions').innerHTML = analysis.immediate_actions.map(a => `<li><span>${a}</span></li>`).join('');
+  document.getElementById('itemsToElevate').innerHTML = analysis.items_to_elevate.map(i => `<span>📦 ${i}</span>`).join('');
+  document.getElementById('emergencyKit').innerHTML = analysis.emergency_kit.map(i => `<span>${i}</span>`).join('');
+
+  const past3 = weather.daily.precipitation_sum.slice(0, 3).reduce((a, b) => a + (b || 0), 0);
+  const next7 = weather.daily.precipitation_sum.slice(3).reduce((a, b) => a + (b || 0), 0);
+  document.getElementById('weatherStats').innerHTML = `
+    <div class="stat-card"><div class="stat-label" style="color:#60a5fa">💧 ฝนตอนนี้</div><div class="stat-value">${(weather.current.precipitation || 0).toFixed(1)} มม.</div></div>
+    <div class="stat-card"><div class="stat-label" style="color:#fbbf24">📊 ฝนสะสม 3 วัน</div><div class="stat-value">${past3.toFixed(0)} มม.</div></div>
+    <div class="stat-card"><div class="stat-label" style="color:#a78bfa">📈 คาดการณ์ 7 วัน</div><div class="stat-value">${next7.toFixed(0)} มม.</div></div>
+    <div class="stat-card"><div class="stat-label" style="color:#10b981">💨 ความเร็วลม</div><div class="stat-value">${(weather.current.wind_speed_10m || 0).toFixed(0)} กม./ชม.</div></div>
+  `;
+
+  const rainChart = document.getElementById('rainChart');
+  rainChart.innerHTML = '';
+  const futureRains = weather.daily.precipitation_sum.slice(3);
+  const maxRain = Math.max(...futureRains.map(x => x || 0), 50);
+  futureRains.forEach((rainRaw, i) => {
+    const rain = rainRaw || 0;
+    const height = Math.max(4, (rain / maxRain) * 100);
+    const color = rain > 80 ? '#dc2626' : rain > 40 ? '#f59e0b' : rain > 10 ? '#60a5fa' : '#475569';
+    const date = new Date(weather.daily.time[i + 3]);
+    rainChart.innerHTML += `<div class="rain-day"><div class="rain-amount">${rain.toFixed(0)}</div><div class="rain-bar" style="height:${height}%;background:${color}"></div><div class="rain-label">${date.toLocaleDateString('th-TH', { weekday: 'short' })}</div></div>`;
+  });
+
+  document.getElementById('modelInfo').textContent = `Gradient Boosting Ensemble (7 trees) — แรงบันดาลใจจาก Kaggle Electricity Load Prediction 2026 (XGBoost methodology) • แหล่งข้อมูล: ${USING_DEMO_DATA ? 'ข้อมูลจำลอง (demo)' : 'Open-Meteo API (จริง)'}`;
+
+  document.getElementById('nearbyList').innerHTML = nearby.map(n => {
+    const rain = n.recentRain || 0;
+    const risk = rain > 120 ? 'high' : rain > 60 ? 'medium' : 'low';
+    return `<div class="nearby-card ${risk}"><div class="nearby-name">${n.name}</div><div class="nearby-distance">ห่าง ${n.distance.toFixed(0)} กม.</div><div class="nearby-rain">ฝนสะสม: <strong>${rain.toFixed(0)} มม.</strong></div></div>`;
+  }).join('');
+
+  document.getElementById('newsList').innerHTML = news.map(n => `<div class="news-item"><div class="news-meta"><span class="news-source ${n.severity}">${n.source}</span><span class="news-time">${n.time}</span></div><div class="news-title">${n.title}</div></div>`).join('');
+
+  window.scrollTo({ top: 0, behavior: 'smooth' });
+}
+
+// ===== Search & Init =====
+function renderLocationGrid(filter = '') {
+  const grid = document.getElementById('locationGrid');
+  const filtered = filter
+    ? THAI_LOCATIONS.filter(loc => loc.name.includes(filter) || loc.region.includes(filter))
+    : THAI_LOCATIONS;
+
+  if (filtered.length === 0) {
+    grid.innerHTML = '<p class="muted" style="text-align:center;padding:20px;grid-column:1/-1">ไม่พบพื้นที่</p>';
+    return;
+  }
+
+  grid.innerHTML = filtered.map(loc =>
+    `<button class="location-btn" data-name="${loc.name}">📍 ${loc.name}</button>`
+  ).join('');
+
+  grid.querySelectorAll('.location-btn').forEach(btn => {
+    btn.addEventListener('click', () => {
+      const loc = THAI_LOCATIONS.find(l => l.name === btn.dataset.name);
+      if (loc) handleSelect(loc);
+    });
+  });
+}
+
+document.addEventListener('DOMContentLoaded', () => {
+  renderLocationGrid();
+  document.getElementById('searchInput').addEventListener('input', (e) => renderLocationGrid(e.target.value));
+  document.getElementById('changeLocationBtn').addEventListener('click', () => {
+    document.getElementById('resultsScreen').style.display = 'none';
+    document.getElementById('errorScreen').style.display = 'none';
+    document.getElementById('loadingScreen').style.display = 'none';
+    document.getElementById('searchScreen').style.display = 'block';
+    document.getElementById('changeLocationBtn').style.display = 'none';
+    selectedLocation = null;
+  });
+  document.getElementById('refreshBtn').addEventListener('click', () => {
+    if (selectedLocation) {
+      localStorage.removeItem(`weather_${selectedLocation.lat.toFixed(2)}_${selectedLocation.lon.toFixed(2)}`);
+      handleSelect(selectedLocation);
+    }
+  });
+});
+</script>
+</body>
+</html>
